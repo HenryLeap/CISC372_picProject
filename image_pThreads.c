@@ -69,7 +69,7 @@ struct helper_params
 {
     Image* srcImage;
     Image* destImage;
-    Matrix algorithm;
+    Matrix* algPointer;
     long rank;
 };
 
@@ -95,7 +95,7 @@ void helper(void* params){
                     param_struct->srcImage->width,bit,param_struct->srcImage->bpp)]=
                     getPixelValue(param_struct->srcImage,pix,
                         rowSubset+endCondition*param_struct->rank,//same thing same reason
-                        bit,param_struct->algorithm);
+                        bit,*param_struct->algPointer);
             }
         }
     }
@@ -117,7 +117,7 @@ void convolute(Image* srcImage,Image* destImage,Matrix algorithm){
         struct helper_params params;
         params.srcImage=srcImage;
         params.destImage=destImage;
-        params.algorithm=algorithm;
+        params.algPointer=&algorithm;
         params.rank=thread;
         pthread_create(&thread_handles[thread],NULL,helper,(void*)&params);
     }
