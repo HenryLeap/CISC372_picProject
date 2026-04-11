@@ -81,15 +81,16 @@ void helper(void* params){
     //divide the number of rows by 8 to get the number of rows in each thread,
     //then step through the row subset
     int endCondition=(param_struct->srcImage->height/8);
-    for(int rowSubset=0;rowSubset<endCondition;rowSubset++){
+    int rowSubset,pix,bit;
+    for(rowSubset=0;rowSubset<endCondition;rowSubset++){
         //if rank==8, run until srcImage->height
         if(param_struct->rank==(long)7){
             //runs every loop if this is the 8th thread
             //but what can i do about it
             endCondition=param_struct->srcImage->height%8;
         }
-        for(int pix=0;pix<param_struct->srcImage->width;pix++){
-            for (int bit=0;bit<param_struct->srcImage->bpp;bit++){
+        for(pix=0;pix<param_struct->srcImage->width;pix++){
+            for (bit=0;bit<param_struct->srcImage->bpp;bit++){
                 param_struct->destImage->data[Index(pix,
                     rowSubset+endCondition*param_struct->rank,//parameter changed to account for rowSubset
                     param_struct->srcImage->width,bit,param_struct->srcImage->bpp)]=
