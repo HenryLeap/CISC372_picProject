@@ -102,7 +102,7 @@ void *helper(void* params){
                 getPixelValue(param_struct->srcImage,pix,
                     (param_struct->srcImage->height/8)*param_struct->rank+rowSubset,//same thing same reason
                     bit,
-                    param_struct->algPointer
+                    &param_struct->algPointer
                 );
             }
         }
