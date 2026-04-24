@@ -3,7 +3,7 @@
 #include <time.h>
 #include <string.h>
 #include "image.h"
-//#include <pthread.h>
+#include <pthread.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -73,7 +73,7 @@ struct helper_params
     long rank;
 };
 
-void helper(void* params){
+void *helper(void* params){
     //typecasting the params
     struct helper_params* param_struct = (struct helper_params*)params;
 
@@ -81,22 +81,29 @@ void helper(void* params){
     //divide the number of rows by 8 to get the number of rows in each thread,
     //then step through the row subset
     int endCondition=(param_struct->srcImage->height/8);
+    if((param_struct->rank==(long)7)){
+        endCondition+=param_struct->srcImage->height%8;
+    }
     int rowSubset,pix,bit;
     for(rowSubset=0;rowSubset<endCondition;rowSubset++){
         //if rank==8, run until srcImage->height
-        if(param_struct->rank==(long)7){
+        
             //runs every loop if this is the 8th thread
             //but what can i do about it
-            endCondition=param_struct->srcImage->height%8;
-        }
+            //wait i can make it only happen on the first time duh
         for(pix=0;pix<param_struct->srcImage->width;pix++){
             for (bit=0;bit<param_struct->srcImage->bpp;bit++){
                 param_struct->destImage->data[Index(pix,
-                    rowSubset+endCondition*param_struct->rank,//parameter changed to account for rowSubset
-                    param_struct->srcImage->width,bit,param_struct->srcImage->bpp)]=
-                    getPixelValue(param_struct->srcImage,pix,
-                        rowSubset+endCondition*param_struct->rank,//same thing same reason
-                        bit,*param_struct->algPointer);
+                    (param_struct->srcImage->height/8)*param_struct->rank+rowSubset,//parameter changed to account for rowSubset
+                    param_struct->srcImage->width,
+                    bit,
+                    param_struct->srcImage->bpp)]
+                =
+                getPixelValue(param_struct->srcImage,pix,
+                    (param_struct->srcImage->height/8)*param_struct->rank+rowSubset,//same thing same reason
+                    bit,
+                    param_struct->algPointer
+                );
             }
         }
     }
@@ -118,13 +125,13 @@ void convolute(Image* srcImage,Image* destImage,Matrix algorithm){
         struct helper_params params;
         params.srcImage=srcImage;
         params.destImage=destImage;
-        params.algPointer=&algorithm;
+        params.algPointer=(Matrix*)algorithm;
         params.rank=thread;
-        pthread_create(&thread_handles[thread],NULL,helper,(void*)&params);
+        pthread_create(&thread_handles[thread],NULL,&helper,(void*)&params);
     }
     for(thread=0;thread<thread_count;thread++){
-            pthread_join(thread_handles[thread],NULL);
-        }
+        pthread_join(thread_handles[thread],NULL);
+    }
     free(thread_handles);
 
     //all of this unused in leiu of helper function
