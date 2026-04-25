@@ -33,11 +33,6 @@ int thread_count;
 //          algorithm: The 3x3 kernel matrix to use for the convolution
 //Returns: The new value for this x,y pixel and bit channel
 uint8_t getPixelValue(Image* srcImage,int x,int y,int bit,Matrix algorithm){
-    //HENRY: can be parallelized by making each algorithm call run on a different thread
-    //and summing them up
-    //is this necessary?
-    //speculative answer: Since the parallelization is in convolute,
-    //no parallelization can happen here
     int px,mx,py,my,i,span;
     span=srcImage->width*srcImage->bpp;
     // for the edge pixes, just reuse the edge pixel
@@ -85,12 +80,8 @@ void *helper(void* params){
         endCondition+=param_struct->srcImage->height%8;
     }
     int rowSubset,pix,bit;
+    printf("In thread %li, about to loop through %i rows\n",param_struct->rank,endCondition);
     for(rowSubset=0;rowSubset<endCondition;rowSubset++){
-        //if rank==8, run until srcImage->height
-        
-            //runs every loop if this is the 8th thread
-            //but what can i do about it
-            //wait i can make it only happen on the first time duh
         for(pix=0;pix<param_struct->srcImage->width;pix++){
             for (bit=0;bit<param_struct->srcImage->bpp;bit++){
                 param_struct->destImage->data[Index(pix,
@@ -119,15 +110,17 @@ void convolute(Image* srcImage,Image* destImage,Matrix algorithm){
     thread_handles=(pthread_t*)malloc(thread_count*sizeof(pthread_t));
     
     //replaces the height loop, row loops happen within helper
-    
+    struct helper_params paramArray[8];
+    printf("Hello I am in convolute\nSource image has height of %i\n",srcImage->height);
     for(thread=0;thread<thread_count;thread++){
         //sets params to pass into helper
-        struct helper_params params;
-        params.srcImage=srcImage;
-        params.destImage=destImage;
-        params.algPointer=(Matrix*)algorithm;
-        params.rank=thread;
-        pthread_create(&thread_handles[thread],NULL,&helper,(void*)&params);
+        paramArray[thread].srcImage=srcImage;
+        paramArray[thread].destImage=destImage;
+        paramArray[thread].algPointer=(Matrix*)algorithm;
+        paramArray[thread].rank=thread;
+        printf("In the for loop, creating thread %li, which has rank %li\n",thread,paramArray[thread].rank);
+        printf("Struct is located at %p\n",&paramArray[thread]);
+        pthread_create(&thread_handles[thread],NULL,&helper,(void*)&paramArray[thread]);
     }
     for(thread=0;thread<thread_count;thread++){
         pthread_join(thread_handles[thread],NULL);
@@ -170,7 +163,7 @@ int main(int argc,char** argv){
     //HENRY: does anything need to be run in main?
     long t1,t2;
     t1=time(NULL);
-
+    printf("Hello I am in main\n");
     stbi_set_flip_vertically_on_load(0); 
     if (argc!=3) return Usage();
     char* fileName=argv[1];
@@ -190,6 +183,7 @@ int main(int argc,char** argv){
     destImage.width=srcImage.width;
     destImage.data=malloc(sizeof(uint8_t)*destImage.width*destImage.bpp*destImage.height);
     //HENRY: Here is the function call
+    printf("About to call the function\n");
     convolute(&srcImage,&destImage,algorithms[type]);
     stbi_write_png("output.png",destImage.width,destImage.height,destImage.bpp,destImage.data,destImage.bpp*destImage.width);
     stbi_image_free(srcImage.data);
